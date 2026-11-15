@@ -14,22 +14,28 @@
   .row { display:flex; gap:12px; }
   .row > div { flex:1; }
   small { color:#949ba4; }
+  .status { background:#3b1f1f; border:1px solid #f04747; border-radius:6px; padding:10px; margin-bottom:16px; display:none; }
+  .status.show { display:block; }
+  .ok { background:#1f3b24; border-color:#43b581; }
 </style>
 </head>
 <body>
 <h1>SecureCord</h1>
 <p>Client Discord sécurisé — routage Tor + VPN chaîné, uniquement pour cette application.</p>
 
+<div id="status" class="status"></div>
+
 <section>
   <h2>Routage</h2>
   <label>Mode</label>
   <select id="routingMode">
     <option value="tor">Tor uniquement</option>
-    <option value="vpn">VPN uniquement</option>
+    <option value="vpn">VPN uniquement (non pris en charge)</option>
     <option value="tor+vpn">Tor puis VPN</option>
     <option value="vpn+tor">VPN puis Tor (recommandé)</option>
     <option value="none">Aucun (direct)</option>
   </select>
+  <small>Le mode "VPN uniquement" n'est pas pris en charge en mode app-only.</small>
 
   <div class="row">
     <div>
@@ -37,6 +43,7 @@
       <label><input type="checkbox" id="torEnabled"> Activé</label>
       <label>Port SOCKS</label><input type="number" id="torSocksPort" value="9050">
       <label>Port contrôle</label><input type="number" id="torControlPort" value="9051">
+      <label><input type="checkbox" id="torBridges"> Tor bridges (réseaux censurés)</label>
     </div>
     <div>
       <h3>VPN</h3>
@@ -60,11 +67,11 @@
   <label><input type="checkbox" id="blockWebRTC"> Bloquer les fuites WebRTC</label>
   <label><input type="checkbox" id="disableQuic"> Désactiver QUIC</label>
   <label><input type="checkbox" id="disableTelemetry"> Désactiver la télémétrie</label>
+  <label><input type="checkbox" id="strictCsp"> CSP stricte</label>
   <label><input type="checkbox" id="spoofUserAgent"> Usurper User-Agent (anti-fingerprint)</label>
   <label><input type="checkbox" id="clearDataOnQuit"> Effacer données/cache à la fermeture</label>
   <label><input type="checkbox" id="blockTrackers"> Bloquer trackers/analytics</label>
   <label><input type="checkbox" id="disableHardwareAccel"> Désactiver accélération matérielle</label>
-  <label><input type="checkbox" id="torBridges"> Tor bridges (réseaux censurés)</label>
 </section>
 
 <button id="save">Enregistrer</button>
@@ -73,61 +80,90 @@
 
 <script>
 const api = window.securecord;
+const statusEl = document.getElementById('status');
+function showStatus(msg, ok) {
+  statusEl.textContent = msg;
+  statusEl.className = 'status show' + (ok ? ' ok' : '');
+}
 async function load() {
-  const s = await api.getSettings();
-  document.getElementById('routingMode').value = s.routingMode;
-  document.getElementById('torEnabled').checked = s.tor.enabled;
-  document.getElementById('torSocksPort').value = s.tor.socksPort;
-  document.getElementById('torControlPort').value = s.tor.controlPort;
-  document.getElementById('vpnEnabled').checked = s.vpn.enabled;
-  document.getElementById('vpnType').value = s.vpn.type;
-  document.getElementById('vpnConfig').value = s.vpn.configPath || '';
-  document.getElementById('encryptedDns').checked = s.encryptedDns;
-  document.getElementById('dnsProvider').value = s.dnsProvider;
-  document.getElementById('blockWebRTC').checked = s.blockWebRTC;
-  document.getElementById('disableQuic').checked = s.disableQuic;
-  document.getElementById('disableTelemetry').checked = s.disableTelemetry;
-  document.getElementById('strictCsp').checked = s.strictCsp;
-  document.getElementById('spoofUserAgent').checked = s.spoofUserAgent;
-  document.getElementById('clearDataOnQuit').checked = s.clearDataOnQuit;
-  document.getElementById('blockTrackers').checked = s.blockTrackers;
-  document.getElementById('disableHardwareAccel').checked = s.disableHardwareAccel;
-  document.getElementById('torBridges').checked = s.tor.bridges;
+  if (!api) { showStatus('API non disponible: preload non chargé.', false); return; }
+  try {
+    const s = await api.getSettings();
+    document.getElementById('routingMode').value = s.routingMode || 'tor+vpn';
+    document.getElementById('torEnabled').checked = !!(s.tor && s.tor.enabled);
+    document.getElementById('torSocksPort').value = (s.tor && s.tor.socksPort) || 9050;
+    document.getElementById('torControlPort').value = (s.tor && s.tor.controlPort) || 9051;
+    document.getElementById('torBridges').checked = !!(s.tor && s.tor.bridges);
+    document.getElementById('vpnEnabled').checked = !!(s.vpn && s.vpn.enabled);
+    document.getElementById('vpnType').value = (s.vpn && s.vpn.type) || 'wireguard';
+    document.getElementById('vpnConfig').value = (s.vpn && s.vpn.configPath) || '';
+    document.getElementById('encryptedDns').checked = !!s.encryptedDns;
+    document.getElementById('dnsProvider').value = s.dnsProvider || 'cloudflare-doh';
+    document.getElementById('blockWebRTC').checked = !!s.blockWebRTC;
+    document.getElementById('disableQuic').checked = !!s.disableQuic;
+    document.getElementById('disableTelemetry').checked = !!s.disableTelemetry;
+    document.getElementById('strictCsp').checked = !!s.strictCsp;
+    document.getElementById('spoofUserAgent').checked = !!s.spoofUserAgent;
+    document.getElementById('clearDataOnQuit').checked = !!s.clearDataOnQuit;
+    document.getElementById('blockTrackers').checked = !!s.blockTrackers;
+    document.getElementById('disableHardwareAccel').checked = !!s.disableHardwareAccel;
+
+    const errs = (s.startupErrors && s.startupErrors.length) ? s.startupErrors : await (api.getStartupErrors ? api.getStartupErrors() : []);
+    if (errs && errs.length) {
+      showStatus('Erreurs de démarrage: ' + errs.join(' | '), false);
+    }
+  } catch (e) {
+    showStatus('Erreur de chargement: ' + e, false);
+    console.error('[settings] load error', e);
+  }
 }
 document.getElementById('save').onclick = async () => {
-  const s = {
-    routingMode: document.getElementById('routingMode').value,
-    tor: {
-      enabled: document.getElementById('torEnabled').checked,
-      socksPort: parseInt(document.getElementById('torSocksPort').value,10),
-      controlPort: parseInt(document.getElementById('torControlPort').value,10),
-      socksHost: '127.0.0.1',
-      bridges: document.getElementById('torBridges').checked
-    },
-    vpn: {
-      enabled: document.getElementById('vpnEnabled').checked,
-      type: document.getElementById('vpnType').value,
-      configPath: document.getElementById('vpnConfig').value
-    },
-    encryptedDns: document.getElementById('encryptedDns').checked,
-    dnsProvider: document.getElementById('dnsProvider').value,
-    blockWebRTC: document.getElementById('blockWebRTC').checked,
-    disableQuic: document.getElementById('disableQuic').checked,
-    disableTelemetry: document.getElementById('disableTelemetry').checked,
-    strictCsp: document.getElementById('strictCsp').checked,
-    spoofUserAgent: document.getElementById('spoofUserAgent').checked,
-    clearDataOnQuit: document.getElementById('clearDataOnQuit').checked,
-    blockTrackers: document.getElementById('blockTrackers').checked,
-    disableHardwareAccel: document.getElementById('disableHardwareAccel').checked,
-  };
-  await api.saveSettings(s);
-  alert('Enregistré. Redémarrez l\'application pour appliquer le routage.');
+  if (!api) { showStatus('API non disponible.', false); return; }
+  try {
+    const s = {
+      routingMode: document.getElementById('routingMode').value,
+      tor: {
+        enabled: document.getElementById('torEnabled').checked,
+        socksPort: parseInt(document.getElementById('torSocksPort').value, 10) || 9050,
+        controlPort: parseInt(document.getElementById('torControlPort').value, 10) || 9051,
+        socksHost: '127.0.0.1',
+        bridges: document.getElementById('torBridges').checked
+      },
+      vpn: {
+        enabled: document.getElementById('vpnEnabled').checked,
+        type: document.getElementById('vpnType').value,
+        configPath: document.getElementById('vpnConfig').value
+      },
+      encryptedDns: document.getElementById('encryptedDns').checked,
+      dnsProvider: document.getElementById('dnsProvider').value,
+      blockWebRTC: document.getElementById('blockWebRTC').checked,
+      disableQuic: document.getElementById('disableQuic').checked,
+      disableTelemetry: document.getElementById('disableTelemetry').checked,
+      strictCsp: document.getElementById('strictCsp').checked,
+      spoofUserAgent: document.getElementById('spoofUserAgent').checked,
+      clearDataOnQuit: document.getElementById('clearDataOnQuit').checked,
+      blockTrackers: document.getElementById('blockTrackers').checked,
+      disableHardwareAccel: document.getElementById('disableHardwareAccel').checked,
+    };
+    const r = await api.saveSettings(s);
+    if (r && r.ok) {
+      showStatus('Enregistré. Redémarrez l\'application pour appliquer.', true);
+    } else {
+      showStatus('Échec de l\'enregistrement.', false);
+    }
+  } catch (e) {
+    showStatus('Erreur: ' + e, false);
+    console.error('[settings] save error', e);
+  }
 };
 document.getElementById('newIdentity').onclick = async () => {
+  if (!api) return;
   const r = await api.newTorIdentity();
-  alert(r ? 'Nouvelle identite Tor demandee.' : 'Echec.');
+  showStatus(r ? 'Nouvelle identité Tor demandée.' : 'Échec (Tor non disponible).', !!r);
 };
-document.getElementById('openDiscord').onclick = () => api.openExternal('https://discord.com/app');
+document.getElementById('openDiscord').onclick = () => {
+  if (api) api.openExternal('https://discord.com/app');
+};
 load();
 </script>
 </body>

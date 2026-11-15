@@ -6,6 +6,7 @@
   "scripts": {
     "start": "electron client/src/main.js",
     "dev": "electron client/src/main.js --dev",
+    "test": "node tests/config.test.js",
     "dist": "electron-builder"
   },
   "author": "SecureCord",
