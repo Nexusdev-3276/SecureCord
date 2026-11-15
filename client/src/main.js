@@ -50,6 +50,8 @@ function saveSettings(s) {
 }
 
 let settings = loadSettings();
+let mainWindow = null;
+let settingsWindow = null;
 let splashWindow = null;
 
 function createSplash() {
@@ -77,7 +79,9 @@ function sendStatus(msg) {
 }
 
 function closeSplash() {
+  console.log('[main] closeSplash called, splashWindow=', !!splashWindow);
   if (splashWindow && !splashWindow.isDestroyed()) {
+    console.log('[main] closing splash');
     splashWindow.close();
     splashWindow = null;
   }
@@ -466,11 +470,13 @@ app.whenReady().then(async () => {
   applyAntiTracking();
   sendStatus('Ouverture de Discord…');
   createWindow();
-  // close splash once discord loaded
   if (mainWindow) {
-    mainWindow.webContents.on('did-finish-load', () => { setTimeout(closeSplash, 500); });
+    const close = () => { setTimeout(closeSplash, 300); };
+    mainWindow.webContents.on('did-finish-load', close);
+    mainWindow.webContents.on('did-fail-load', close);
+    mainWindow.webContents.on('dom-ready', close);
   }
-  setTimeout(closeSplash, 15000);
+  setTimeout(closeSplash, 8000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
