@@ -81,6 +81,11 @@ let torProc = null;
 let vpnProc = null;
 let torAvailable = true;
 
+// disableHardwareAcceleration must be called before app is ready.
+if (settings.disableHardwareAccel) {
+  app.disableHardwareAcceleration();
+}
+
 // Apply command-line hardening as early as possible.
 applyHardening();
 
@@ -195,9 +200,6 @@ async function applyProxyToSession() {
 // Hardening
 // ----------------------------------------------------------------------------
 function applyHardening() {
-  if (settings.disableHardwareAccel) {
-    app.disableHardwareAcceleration();
-  }
   app.commandLine.appendSwitch('disable-background-networking');
   app.commandLine.appendSwitch('disable-component-update');
   app.commandLine.appendSwitch('disable-sync');
