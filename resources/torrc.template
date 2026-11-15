@@ -1,0 +1,18 @@
+# Tor configuration for SecureCord (app-only)
+SocksPort 127.0.0.1:9050
+ControlPort 127.0.0.1:9051
+CookieAuthentication 1
+
+# Chain: when VPN is up, bind Tor's outbound to the VPN interface/address.
+# Set OutboundBindAddress to the VPN-assigned IP (see your VPN config).
+# OutboundBindAddress 10.x.x.x
+
+# Reduce leaks
+DisableNetwork 0
+ClientOnly 1
+AvoidDiskWrites 1
+HardwareAccel 0
+
+# DNS
+DNSPort 0
+AutomapHostsOnResolve 1

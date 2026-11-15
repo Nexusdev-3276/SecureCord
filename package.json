@@ -1,0 +1,33 @@
+{
+  "name": "securecord",
+  "version": "0.1.0",
+  "description": "Secure Discord client: Electron wrapper routing Discord traffic through a chained Tor + VPN tunnel (app-only, never system-wide), with hardening, encrypted DNS and anti-leak protection.",
+  "main": "client/src/main.js",
+  "scripts": {
+    "start": "electron client/src/main.js",
+    "dev": "electron client/src/main.js --dev",
+    "dist": "electron-builder"
+  },
+  "author": "SecureCord",
+  "license": "AGPL-3.0",
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.securecord.app",
+    "productName": "SecureCord",
+    "directories": {
+      "output": "client/dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ]
+    }
+  }
+}

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>SecureCord - Paramètres</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#1e1f22; color:#dcddde; margin:0; padding:20px; }
+  h1 { color:#5865f2; }
+  section { background:#2b2d31; border-radius:8px; padding:16px; margin-bottom:16px; }
+  label { display:block; margin:8px 0 4px; }
+  select, input[type=text], input[type=number] { width:100%; padding:8px; border-radius:4px; border:1px solid #1e1f22; background:#1e1f22; color:#dcddde; }
+  button { background:#5865f2; color:#fff; border:none; padding:10px 16px; border-radius:4px; cursor:pointer; margin-top:8px; }
+  button.secondary { background:#4f545c; }
+  .row { display:flex; gap:12px; }
+  .row > div { flex:1; }
+  small { color:#949ba4; }
+</style>
+</head>
+<body>
+<h1>SecureCord</h1>
+<p>Client Discord sécurisé — routage Tor + VPN chaîné, uniquement pour cette application.</p>
+
+<section>
+  <h2>Routage</h2>
+  <label>Mode</label>
+  <select id="routingMode">
+    <option value="tor">Tor uniquement</option>
+    <option value="vpn">VPN uniquement</option>
+    <option value="tor+vpn">Tor puis VPN</option>
+    <option value="vpn+tor">VPN puis Tor (recommandé)</option>
+    <option value="none">Aucun (direct)</option>
+  </select>
+
+  <div class="row">
+    <div>
+      <h3>Tor</h3>
+      <label><input type="checkbox" id="torEnabled"> Activé</label>
+      <label>Port SOCKS</label><input type="number" id="torSocksPort" value="9050">
+      <label>Port contrôle</label><input type="number" id="torControlPort" value="9051">
+    </div>
+    <div>
+      <h3>VPN</h3>
+      <label><input type="checkbox" id="vpnEnabled"> Activé</label>
+      <label>Type</label>
+      <select id="vpnType"><option value="wireguard">WireGuard</option><option value="openvpn">OpenVPN</option></select>
+      <label>Fichier de config</label><input type="text" id="vpnConfig" placeholder="C:\\path\\to\\wg.conf">
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Sécurité</h2>
+  <label><input type="checkbox" id="encryptedDns"> DNS chiffré (DoH)</label>
+  <label>Provider DNS</label>
+  <select id="dnsProvider">
+    <option value="cloudflare-doh">Cloudflare</option>
+    <option value="quad9-doh">Quad9</option>
+    <option value="nextdns">NextDNS</option>
+  </select>
+  <label><input type="checkbox" id="blockWebRTC"> Bloquer les fuites WebRTC</label>
+  <label><input type="checkbox" id="disableQuic"> Désactiver QUIC</label>
+  <label><input type="checkbox" id="disableTelemetry"> Désactiver la télémétrie</label>
+  <label><input type="checkbox" id="spoofUserAgent"> Usurper User-Agent (anti-fingerprint)</label>
+  <label><input type="checkbox" id="clearDataOnQuit"> Effacer données/cache à la fermeture</label>
+  <label><input type="checkbox" id="blockTrackers"> Bloquer trackers/analytics</label>
+  <label><input type="checkbox" id="disableHardwareAccel"> Désactiver accélération matérielle</label>
+  <label><input type="checkbox" id="torBridges"> Tor bridges (réseaux censurés)</label>
+</section>
+
+<button id="save">Enregistrer</button>
+<button class="secondary" id="newIdentity">Nouvelle identité Tor</button>
+<button class="secondary" id="openDiscord">Ouvrir Discord</button>
+
+<script>
+const api = window.securecord;
+async function load() {
+  const s = await api.getSettings();
+  document.getElementById('routingMode').value = s.routingMode;
+  document.getElementById('torEnabled').checked = s.tor.enabled;
+  document.getElementById('torSocksPort').value = s.tor.socksPort;
+  document.getElementById('torControlPort').value = s.tor.controlPort;
+  document.getElementById('vpnEnabled').checked = s.vpn.enabled;
+  document.getElementById('vpnType').value = s.vpn.type;
+  document.getElementById('vpnConfig').value = s.vpn.configPath || '';
+  document.getElementById('encryptedDns').checked = s.encryptedDns;
+  document.getElementById('dnsProvider').value = s.dnsProvider;
+  document.getElementById('blockWebRTC').checked = s.blockWebRTC;
+  document.getElementById('disableQuic').checked = s.disableQuic;
+  document.getElementById('disableTelemetry').checked = s.disableTelemetry;
+  document.getElementById('strictCsp').checked = s.strictCsp;
+  document.getElementById('spoofUserAgent').checked = s.spoofUserAgent;
+  document.getElementById('clearDataOnQuit').checked = s.clearDataOnQuit;
+  document.getElementById('blockTrackers').checked = s.blockTrackers;
+  document.getElementById('disableHardwareAccel').checked = s.disableHardwareAccel;
+  document.getElementById('torBridges').checked = s.tor.bridges;
+}
+document.getElementById('save').onclick = async () => {
+  const s = {
+    routingMode: document.getElementById('routingMode').value,
+    tor: {
+      enabled: document.getElementById('torEnabled').checked,
+      socksPort: parseInt(document.getElementById('torSocksPort').value,10),
+      controlPort: parseInt(document.getElementById('torControlPort').value,10),
+      socksHost: '127.0.0.1',
+      bridges: document.getElementById('torBridges').checked
+    },
+    vpn: {
+      enabled: document.getElementById('vpnEnabled').checked,
+      type: document.getElementById('vpnType').value,
+      configPath: document.getElementById('vpnConfig').value
+    },
+    encryptedDns: document.getElementById('encryptedDns').checked,
+    dnsProvider: document.getElementById('dnsProvider').value,
+    blockWebRTC: document.getElementById('blockWebRTC').checked,
+    disableQuic: document.getElementById('disableQuic').checked,
+    disableTelemetry: document.getElementById('disableTelemetry').checked,
+    strictCsp: document.getElementById('strictCsp').checked,
+    spoofUserAgent: document.getElementById('spoofUserAgent').checked,
+    clearDataOnQuit: document.getElementById('clearDataOnQuit').checked,
+    blockTrackers: document.getElementById('blockTrackers').checked,
+    disableHardwareAccel: document.getElementById('disableHardwareAccel').checked,
+  };
+  await api.saveSettings(s);
+  alert('Enregistré. Redémarrez l\'application pour appliquer le routage.');
+};
+document.getElementById('newIdentity').onclick = async () => {
+  const r = await api.newTorIdentity();
+  alert(r ? 'Nouvelle identite Tor demandee.' : 'Echec.');
+};
+document.getElementById('openDiscord').onclick = () => api.openExternal('https://discord.com/app');
+load();
+</script>
+</body>
+</html>
