@@ -450,8 +450,64 @@ ipcMain.handle('tor-new-identity', () => torNewIdentity());
 ipcMain.handle('get-startup-errors', () => startupErrors);
 
 // ----------------------------------------------------------------------------
-// App lifecycle
+// Network status (IP + Tor circuits)
 // ----------------------------------------------------------------------------
+async function fetchExitIp() {
+  try {
+    const res = await session.defaultSession.fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+    const json = await res.json();
+    return json.ip || null;
+  } catch (e) {
+    console.error('ip fetch error', e);
+    return null;
+  }
+}
+
+function torCircuitStatus() {
+  return new Promise((resolve) => {
+    if (!settings.tor.enabled || !torAvailable) return resolve([]);
+    const sock = new net.Socket();
+    let data = '';
+    const circuits = [];
+    sock.on('connect', () => {
+      sock.write('AUTHENTICATE ""\r\n');
+      sock.write('GET_INFO circuit-status\r\n');
+      sock.write('QUIT\r\n');
+    });
+    sock.on('data', (d) => { data += d.toString(); });
+    sock.on('close', () => {
+      // Parse circuit-status lines: "circuit-status=..." then entries
+      const lines = data.split(/\r?\n/);
+      for (const line of lines) {
+        const m = line.match(/\$([0-9A-F]{40})~(\S+)/g);
+        if (m && m.length) circuits.push(m.join(' → '));
+      }
+      // Fallback: include raw if no parsed circuits
+      if (circuits.length === 0 && data.includes('circuit-status')) {
+        circuits.push(data.trim().slice(0, 300));
+      }
+      resolve(circuits);
+    });
+    sock.on('error', () => resolve([]));
+    try { sock.connect(settings.tor.controlPort, settings.tor.socksHost); } catch { resolve([]); }
+    setTimeout(() => { try { sock.destroy(); } catch {} resolve(circuits); }, 3000);
+  });
+}
+
+ipcMain.handle('get-network-status', async () => {
+  const ip = await fetchExitIp();
+  const circuits = await torCircuitStatus();
+  return {
+    ip,
+    torEnabled: settings.tor.enabled,
+    torAvailable,
+    torReady: torAvailable && settings.tor.enabled,
+    proxyUrl: effectiveProxyUrl(),
+    vpnEnabled: settings.vpn.enabled,
+    vpnConfigured: !!(settings.vpn.configPath),
+    circuits
+  };
+});
 app.whenReady().then(async () => {
   createSplash();
   sendStatus('Application des protections…');

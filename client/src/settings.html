@@ -74,8 +74,14 @@
   <label><input type="checkbox" id="disableHardwareAccel"> Désactiver accélération matérielle</label>
 </section>
 
+<section>
+  <h2>Réseau & IP</h2>
+  <div id="netStatus" style="font-family:monospace;font-size:13px;line-height:1.6;">Chargement…</div>
+  <button class="secondary" id="refreshNet">Rafraîchir</button>
+  <button class="secondary" id="newIdentity">Nouvelle identité Tor</button>
+</section>
+
 <button id="save">Enregistrer</button>
-<button class="secondary" id="newIdentity">Nouvelle identité Tor</button>
 <button class="secondary" id="openDiscord">Ouvrir Discord</button>
 
 <script>
@@ -156,15 +162,39 @@ document.getElementById('save').onclick = async () => {
     console.error('[settings] save error', e);
   }
 };
+async function refreshNet() {
+  if (!api || !api.getNetworkStatus) return;
+  const el = document.getElementById('netStatus');
+  el.textContent = 'Chargement…';
+  try {
+    const n = await api.getNetworkStatus();
+    let html = '';
+    html += 'IP de sortie: ' + (n.ip || 'inconnue') + '\n';
+    html += 'Tor: ' + (n.torReady ? 'prêt' : (n.torEnabled ? 'indisponible' : 'désactivé')) + '\n';
+    html += 'VPN: ' + (n.vpnEnabled ? (n.vpnConfigured ? 'configuré' : 'non configuré') : 'désactivé') + '\n';
+    html += 'Proxy: ' + (n.proxyUrl || 'aucun (direct)') + '\n';
+    if (n.circuits && n.circuits.length) {
+      html += 'Circuits Tor:\n' + n.circuits.map(c => '  - ' + c).join('\n');
+    } else {
+      html += 'Circuits Tor: (non disponibles)';
+    }
+    el.textContent = html;
+  } catch (e) {
+    el.textContent = 'Erreur: ' + e;
+  }
+}
+document.getElementById('refreshNet').onclick = refreshNet;
 document.getElementById('newIdentity').onclick = async () => {
   if (!api) return;
   const r = await api.newTorIdentity();
   showStatus(r ? 'Nouvelle identité Tor demandée.' : 'Échec (Tor non disponible).', !!r);
+  refreshNet();
 };
 document.getElementById('openDiscord').onclick = () => {
   if (api) api.openExternal('https://discord.com/app');
 };
 load();
+refreshNet();
 </script>
 </body>
 </html>
