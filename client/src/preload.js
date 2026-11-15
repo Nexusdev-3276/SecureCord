@@ -29,5 +29,6 @@ contextBridge.exposeInMainWorld('securecord', {
   saveSettings: (s) => ipcRenderer.invoke('save-settings', s),
   openExternal: (u) => ipcRenderer.invoke('open-external', u),
   newTorIdentity: () => ipcRenderer.invoke('tor-new-identity'),
-  getStartupErrors: () => ipcRenderer.invoke('get-startup-errors')
+  getStartupErrors: () => ipcRenderer.invoke('get-startup-errors'),
+  onStatus: (cb) => ipcRenderer.on('status', (_e, m) => cb(m))
 });

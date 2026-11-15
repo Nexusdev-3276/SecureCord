@@ -50,8 +50,38 @@ function saveSettings(s) {
 }
 
 let settings = loadSettings();
-let mainWindow = null;
-let settingsWindow = null;
+let splashWindow = null;
+
+function createSplash() {
+  splashWindow = new BrowserWindow({
+    width: 420,
+    height: 260,
+    frame: false,
+    resizable: false,
+    alwaysOnTop: true,
+    backgroundColor: '#1e1f22',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  });
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+}
+
+function sendStatus(msg) {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('status', msg);
+  }
+}
+
+function closeSplash() {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.close();
+    splashWindow = null;
+  }
+}
 let torProc = null;
 let vpnProc = null;
 let torAvailable = true;
@@ -419,15 +449,28 @@ ipcMain.handle('get-startup-errors', () => startupErrors);
 // App lifecycle
 // ----------------------------------------------------------------------------
 app.whenReady().then(async () => {
+  createSplash();
+  sendStatus('Application des protections…');
   applyHardening();
+  sendStatus('Validation du mode de routage…');
   validateRoutingMode();
+  sendStatus('Démarrage du VPN…');
   const vpnRes = await startVpn();
-  if (vpnRes && !vpnRes.ok && !vpnRes.skipped) console.error('VPN:', vpnRes.message);
+  if (vpnRes && !vpnRes.ok && !vpnRes.skipped) { sendStatus('VPN: ' + vpnRes.message); console.error('VPN:', vpnRes.message); }
+  sendStatus('Démarrage de Tor…');
   const torRes = await startTor();
-  if (torRes && !torRes.ok && !torRes.skipped) console.error('Tor:', torRes.message);
+  if (torRes && !torRes.ok && !torRes.skipped) { sendStatus('Tor: ' + torRes.message); console.error('Tor:', torRes.message); }
+  else sendStatus('Tor prêt.');
+  sendStatus('Application du proxy…');
   await applyProxyToSession();
   applyAntiTracking();
+  sendStatus('Ouverture de Discord…');
   createWindow();
+  // close splash once discord loaded
+  if (mainWindow) {
+    mainWindow.webContents.on('did-finish-load', () => { setTimeout(closeSplash, 500); });
+  }
+  setTimeout(closeSplash, 15000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

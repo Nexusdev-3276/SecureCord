@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>SecureCord</title>
+<style>
+  body { margin:0; background:#1e1f22; color:#dcddde; font-family:system-ui,sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; }
+  .box { text-align:center; }
+  h1 { color:#5865f2; margin-bottom:8px; }
+  .status { font-size:14px; color:#949ba4; margin-top:12px; min-height:20px; }
+  .spinner { width:40px; height:40px; border:4px solid #2b2d31; border-top-color:#5865f2; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .err { color:#f04747; margin-top:8px; font-size:12px; max-width:400px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="spinner"></div>
+  <h1>SecureCord</h1>
+  <div class="status" id="status">Préparation de la connexion sécurisée…</div>
+  <div class="err" id="err"></div>
+</div>
+<script>
+  const api = window.securecord;
+  if (api && api.onStatus) {
+    api.onStatus((m) => { document.getElementById('status').textContent = m; });
+  }
+</script>
+</body>
+</html>
