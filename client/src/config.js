@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
     socksPort: 9050,
     controlPort: 9051,
     bundled: true,
+    binaryPath: '',
     bridges: false,
     newIdentityOnStart: false
   },
@@ -61,7 +62,7 @@ function resolveProxyUrl(settings, torAvailable) {
     return null;
   }
   if (settings.tor && settings.tor.enabled && torAvailable) {
-    return `socks5h://${settings.tor.socksHost}:${settings.tor.socksPort}`;
+    return `socks5://${settings.tor.socksHost}:${settings.tor.socksPort}`;
   }
   return null;
 }

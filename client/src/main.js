@@ -61,8 +61,18 @@ let startupErrors = [];
 // Tor management (app-local only)
 // ----------------------------------------------------------------------------
 function torBinaryPath() {
+  if (settings.tor.binaryPath && fs.existsSync(settings.tor.binaryPath)) {
+    return settings.tor.binaryPath;
+  }
   const bundled = path.join(process.resourcesPath || '', 'tor', 'tor.exe');
   if (fs.existsSync(bundled)) return bundled;
+  const candidates = [
+    path.join(process.env.USERPROFILE || '', 'Desktop', 'Tor Browser', 'Browser', 'TorBrowser', 'Tor', 'tor.exe'),
+    'C:\\Program Files\\Tor Browser\\Browser\\TorBrowser\\Tor\\tor.exe',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
   return 'tor';
 }
 
@@ -93,10 +103,13 @@ function startTor() {
     if (fs.existsSync(torrcPath)) {
       args = ['-f', torrcPath];
     } else {
+      const dataDir = path.join(USER_DATA, 'tor-data');
+      try { fs.mkdirSync(dataDir, { recursive: true }); } catch {}
       args = [
         '--SocksPort', `${settings.tor.socksHost}:${settings.tor.socksPort}`,
         '--ControlPort', String(settings.tor.controlPort),
-        '--CookieAuthentication', '1'
+        '--CookieAuthentication', '1',
+        '--DataDirectory', dataDir
       ];
     }
     if (settings.vpn.enabled && settings.chainOrder === 'vpn-then-tor' && settings.vpn.bindAddress) {

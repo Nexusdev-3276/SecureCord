@@ -30,7 +30,7 @@ const {
 // resolveProxyUrl uses socks5h and respects torAvailable
 {
   const s = { routingMode: 'tor+vpn', tor: { enabled: true, socksHost: '127.0.0.1', socksPort: 9050 } };
-  assert.strictEqual(resolveProxyUrl(s, true), 'socks5h://127.0.0.1:9050');
+  assert.strictEqual(resolveProxyUrl(s, true), 'socks5://127.0.0.1:9050');
   assert.strictEqual(resolveProxyUrl(s, false), null);
   const none = { routingMode: 'none', tor: { enabled: true, socksHost: '127.0.0.1', socksPort: 9050 } };
   assert.strictEqual(resolveProxyUrl(none, true), null);
