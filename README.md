@@ -47,6 +47,14 @@ Prérequis : Node.js 22+, Tor installé (ou binaire dans `resources/tor/`), et o
 
 Menu → Fichier → Paramètres. Choisissez le mode de routage, activez Tor/VPN, renseignez le fichier de config VPN, DNS, etc. Redémarrez pour appliquer.
 
-## Avertissement
+## Anti-fingerprint / anonymat maximal
+
+- User-Agent usurpé + Referer supprimé
+- Blocage des trackers/analytics (webRequest)
+- Cookies tiers bloqués
+- Effacement des données/cache à la fermeture
+- Accélération matérielle désactivable (réduction fingerprint)
+- DNS distant via Tor (socks5h) — pas de fuite DNS
+- Nouvelle identité Tor à la demande (bouton Paramètres)
 
 Ce logiciel est fourni à des fins éducatives et personnelles. L'utilisation de Tor/VPN peut être soumise à des restrictions selon votre juridiction. L'utilisateur est responsable de l'usage qu'il en fait.
